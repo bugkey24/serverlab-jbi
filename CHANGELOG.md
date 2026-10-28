@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Host-Level Tailscale Deployment Script (`scripts/setup-host-tailscale.sh`)**:
+  - Provides automated configuration of Tailscale in userspace networking mode directly on the TurnKey Debian 12 LXC host.
+  - Configures `/etc/default/tailscaled` with `--tun=userspace-networking` and persistent SOCKS5/HTTP listeners on `127.0.0.1:1055`.
+  - Enables direct, passwordless remote SSH administration into the actual host (`root@jbi24061 ~#`) via Tailscale SSH rather than trapping sessions inside isolated container namespaces.
 - **Official GitHub Repository Linkage**:
   - Connected project remote to [`https://github.com/bugkey24/serverlab-jbi.git`](https://github.com/bugkey24/serverlab-jbi.git).
   - Updated Quick Start instructions in `README.md` to reference the remote clone command.

@@ -47,9 +47,53 @@ flowchart TD
 
 ---
 
-## 3. Deployment Configuration
+## 2. Architecture Comparison: Host-Level vs. Containerized
 
-### 3.1 Docker Compose Configuration (`services/tailscale/compose.yaml`)
+Depending on your access requirements:
+
+| Feature | Pattern A: Host-Level Tailscale (Recommended) | Pattern B: Containerized Tailscale |
+| :--- | :--- | :--- |
+| **Where Tailscale Runs** | Direct systemd service on TurnKey Debian host | Isolated Docker container (`infra-tailscale`) |
+| **Tailscale SSH Target** | **Host OS** (`root@jbi24061 ~#`) | **Alpine Container** (`root@4be38c45cb23:~#`) |
+| **Access to Host Services** | Full native control (`systemctl`, `docker`, `/opt`) | Isolated inside container namespace |
+| **Outbound App Proxy** | `127.0.0.1:1055` directly on host | Forwarded from container via Docker port |
+| **Setup Script** | [`scripts/setup-host-tailscale.sh`](../scripts/setup-host-tailscale.sh) | `services/tailscale/compose.yaml` |
+
+> [!IMPORTANT]
+> If your primary goal is remote terminal administration into the TurnKey Linux LXC container (`root@jbi24061`), use **Pattern A (Host-Level)**. Running Tailscale inside a Docker container intercepts Tailscale SSH within that container's own Alpine filesystem.
+
+---
+
+## 3. Pattern A: Host-Level Deployment (Direct LXC SSH Access)
+
+### Automated Setup
+On your TurnKey Debian host (`root@jbi24061`):
+```bash
+sudo chmod +x /opt/infra/scripts/setup-host-tailscale.sh
+sudo /opt/infra/scripts/setup-host-tailscale.sh
+```
+
+### Manual Setup Steps
+1. **Configure systemd for Userspace Netstack**:
+   Create or edit `/etc/default/tailscaled`:
+   ```bash
+   FLAGS="--tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055"
+   ```
+2. **Reload and Restart**:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now tailscaled
+   ```
+3. **Authenticate with Tailscale SSH**:
+   ```bash
+   sudo tailscale up --ssh --hostname=campus-lxc-node
+   ```
+
+---
+
+## 4. Pattern B: Docker Containerized Deployment
+
+### 4.1 Docker Compose Configuration (`services/tailscale/compose.yaml`)
 
 ```yaml
 name: infra-tailscale
@@ -158,7 +202,25 @@ $response = Http::withOptions([
 
 ## 6. Troubleshooting & Gotchas
 
-#### 1. Container fails with `flag provided but not defined: -tun`
+#### 1. SSH lands in Alpine Linux (`Welcome to Alpine!`) instead of TurnKey Host
+- **Cause**: Tailscale was started with `--ssh` inside the Docker container (`infra-tailscale`). The official Tailscale Docker image runs Alpine Linux.
+- **Fix**: To SSH into the real Debian host (`root@jbi24061`), stop the Docker Tailscale container and run Tailscale directly on the host using `scripts/setup-host-tailscale.sh`.
+
+#### 2. `tailscale: tailnet policy does not permit you to SSH as user "root"` (or `"asus"`)
+- **Cause**: Tailscale ACLs enforce strict SSH permission. By default, high-privilege accounts like `root` are blocked unless explicitly permitted.
+- **Fix**: Open the [Tailscale Admin Console: Access Controls](https://login.tailscale.com/admin/acls) and add `root` to the `ssh` block:
+  ```json
+  "ssh": [
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["autogroup:self", "tag:server"],
+      "users": ["root", "autogroup:nonroot"]
+    }
+  ]
+  ```
+
+#### 3. Container fails with `flag provided but not defined: -tun`
 - **Cause**: `--tun=userspace-networking` was incorrectly placed in `TS_EXTRA_ARGS`. In Tailscale's Docker container, `TS_EXTRA_ARGS` is passed to the CLI command `tailscale up`, whereas `--tun` is a flag strictly for the `tailscaled` daemon.
 - **Fix**: Remove `--tun=...` from `TS_EXTRA_ARGS`. Setting `TS_USERSPACE=true` automatically launches `tailscaled` with `--tun=userspace-networking`.
 
