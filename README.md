@@ -56,7 +56,7 @@ flowchart TD
         CF_DNS --> CF_Edge
     end
 
-    subgraph LXC_Container [Campus LXC Container (1 vCPU, 1 GB RAM)]
+    subgraph LXC_Container ["Campus LXC Container (1 vCPU, 1 GB RAM)"]
         subgraph Docker_Network [Docker Network: infra_network]
             direction TB
             CFTunnel[Cloudflare Tunnel\ncloudflared]
@@ -140,7 +140,7 @@ Each service and application is isolated with its own modern Compose specificati
 
 ### Step 1: Clone Repository to `/opt/infra`
 ```bash
-sudo git clone https://github.com/your-username/your-repo.git /opt/infra
+sudo git clone https://github.com/bugkey24/serverlab-jbi.git /opt/infra
 cd /opt/infra
 ```
 

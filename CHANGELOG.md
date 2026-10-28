@@ -1,41 +1,38 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes and technical iterations for the campus infrastructure blueprint and demo application will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
----
-
-## [1.2.0] - 2026-10-28
-
-### Added
-- **ServerLab Pulse (Demonstration & Validation Project)**:
-  - Clean PHP 8.2 & Bootstrap 5 web application located at `examples/demo-laravel-app/`.
-  - Self-contained diagnostic dashboard showing runtime mode (TurnKey LAMP vs Docker VPS), memory usage, database latency, and ingress gateway inspection (`X-Forwarded-For` / `CF-Connecting-IP`).
-  - Interactive server node registry for testing MariaDB connectivity and write operations.
-  - Subpath auto-detection engine allowing the application to run seamlessly under both campus subpaths (`/jbi24061/`) and root custom domains (`pulse.yourdomain.com`).
-- **Dual Deployment Tracks & Documentation**:
-  - `TRACK1_MANUAL_WEBMIN_GUIDE.md`: Step-by-step tutorial for zero-CLI shared-hosting deployment using Webmin File Manager (`:10000`) and Adminer (`:12322`).
-  - `TRACK2_DOCKER_VPS_GUIDE.md`: Production runbook for containerized VPS deployment integrating with NPM, Cloudflare Tunnel, and Tailscale.
-- **Local Simulation Suite (`examples/demo-laravel-app/simulation/`)**:
-  - Fully containerized local test harness simulating the campus host Nginx reverse proxy (`http://localhost:8080/jbi24061/`), Apache virtual host, MariaDB, and Adminer without requiring any local PHP or MySQL installation.
-- **Granular Persistent Volume Standard**:
-  - Standardized all application and infrastructure volume mounts to `/opt/app-data/{app-or-service}/{component-or-service}`.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.2.0] - 2026-10-28
+## [Unreleased]
+
 ### Added
-- **ServerLab Pulse (Authentic Laravel 13 & Bootstrap 5 Demo)**:
-  - Standard Laravel 13.39.0 application engine under `examples/demo-laravel-app/src` running PHP 8.3.
-  - Zero-CLI Track 1 packaging pipeline generating self-contained `serverlab-pulse.zip` with full vendor bundles and pre-seeded SQL schema.
-  - Complete local Docker simulation environment under `examples/demo-laravel-app/simulation` testing campus Nginx subpath reverse proxy (`/jbi24061/`) and Adminer without installing local PHP/MariaDB.
-  - Production Track 2 Docker Compose specification (`examples/demo-laravel-app/compose.yaml`) with Alpine-based PHP 8.3-FPM, Nginx, and MariaDB 10.11.
-  - Detailed guides: [`TRACK1_MANUAL_WEBMIN_GUIDE.md`](examples/demo-laravel-app/TRACK1_MANUAL_WEBMIN_GUIDE.md) and [`TRACK2_DOCKER_VPS_GUIDE.md`](examples/demo-laravel-app/TRACK2_DOCKER_VPS_GUIDE.md).
-- **Security & Secret Sanitization**:
-  - Full audit confirming zero active tokens, credentials, or private keys in the tree.
-  - All configuration templates sanitized to `.env.example`.
+- **Official GitHub Repository Linkage**:
+  - Connected project remote to [`https://github.com/bugkey24/serverlab-jbi.git`](https://github.com/bugkey24/serverlab-jbi.git).
+  - Updated Quick Start instructions in `README.md` to reference the remote clone command.
+- **Enhanced Multi-Format Track 1 Packaging Utilities**:
+  - Added native Linux `tar.gz` (`serverlab-pulse.tar.gz`, ~12.3 MB) and uncompressed directory staging (`dist/serverlab-pulse`) to `package-for-webmin.ps1` and `package-for-webmin.sh`.
+  - Re-architected `serverlab-pulse.zip` generation using BSDTar standard deflate archiving to eliminate Webmin Filemin incorrect password prompt errors.
+  - Added automated CLI post-build reminders detailing manual production `APP_KEY` generation.
+- **Manual Key Generation Workflow**:
+  - Established a zero-placeholder policy for `APP_KEY` in production.
+  - Documented cryptographically secure manual key generation workflows (via PowerShell RNG and OpenSSL) in `TRACK1_MANUAL_WEBMIN_GUIDE.md`.
+
+### Changed
+- **ServerLab Pulse Controller & View Hardening**:
+  - Updated `ServerStatusController.php` to initialize `$nodes` as an `Illuminate\Support\Collection` via `collect()` rather than a raw array.
+  - Hardened `dashboard.blade.php` with type-agnostic checks (`empty($nodes) || count($nodes) === 0`) to prevent `Call to a member function isEmpty() on array` exceptions before MariaDB tables are imported.
+- **Mermaid Syntax Compatibility**:
+  - Quoted subgraph and node labels containing parentheses across `README.md` and `docs/ARCHITECTURE.md` to fix parser errors on GitHub.
+- **Git & Build Hygiene**:
+  - Updated `.gitignore` to strictly ignore large generated distribution archives (`*.zip`, `*.tar.gz`, `dist/`).
+  - Audited all directories to ensure zero live `.env`, certificate, or sensitive token files are tracked.
+
+---
+
+## Infrastructure Blueprint & Architecture Core (Initial Iterations)
 
 ## [1.1.0] - 2026-10-27
 

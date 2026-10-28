@@ -72,7 +72,7 @@ flowchart TD
         CF_DNS --> CF_Edge
     end
 
-    subgraph Campus_LXC [Campus Hosting LXC Container (1 vCPU, 1 GB RAM)]
+    subgraph Campus_LXC ["Campus Hosting LXC Container (1 vCPU, 1 GB RAM)"]
         subgraph Docker_Bridge [Docker Bridge Network: infra_network]
             direction TB
             CFTunnel[Cloudflare Tunnel Container\ncloudflared]
