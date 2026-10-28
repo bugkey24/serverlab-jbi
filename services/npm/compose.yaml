@@ -1,0 +1,27 @@
+name: infra-npm
+
+services:
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: infra-npm
+    restart: unless-stopped
+    ports:
+      # Public HTTP/HTTPS ingress
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      # Admin UI bound strictly to loopback interface for security
+      - "127.0.0.1:${NPM_ADMIN_PORT:-81}:81"
+    environment:
+      - DISABLE_IPV6=true
+      - TZ=${TZ:-Asia/Jakarta}
+    volumes:
+      # Structured as /opt/app-data/{app-or-service}/{component-or-service}
+      - ${APP_DATA_DIR:-/opt/app-data}/npm/data:/data
+      - ${APP_DATA_DIR:-/opt/app-data}/npm/letsencrypt:/etc/letsencrypt
+    networks:
+      - infra_network
+
+networks:
+  infra_network:
+    name: infra_network
+    external: true

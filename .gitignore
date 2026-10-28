@@ -1,0 +1,42 @@
+# Git Ignore for Infra Repository
+
+# Environment variable files containing sensitive secrets in any directory
+.env
+.env.local
+.env.*.local
+*.env
+**/.env
+
+# Large generated distribution artifacts & staging
+examples/demo-laravel-app/*.zip
+examples/demo-laravel-app/*.tar.gz
+examples/demo-laravel-app/dist/
+
+# App data directories (persistent runtime storage)
+data/
+logs/
+letsencrypt/
+*.sqlite
+*.sqlite3
+
+# Docker temp & lock files
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Cloudflare credentials (generated at runtime)
+credentials.json
+cert.pem
+
+# Tailscale runtime state
+tailscale-state/
+*.state
+
+# OS & Editor specific files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

@@ -1,0 +1,21 @@
+FROM php:8.3-apache
+
+# Enable Apache Rewrite Engine
+RUN a2enmod rewrite headers
+
+# Install system dependencies & PHP extensions
+RUN apt-get update && apt-get install -y \
+    libicu-dev \
+    && docker-php-ext-install pdo pdo_mysql intl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Configure Virtual Host to serve /var/www/laravel/public
+COPY simulation/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
+
+WORKDIR /var/www/laravel
+
+# Permissions
+RUN chown -R www-data:www-data /var/www/laravel
+
+EXPOSE 80
+CMD ["apache2-foreground"]

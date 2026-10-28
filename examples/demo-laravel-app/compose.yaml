@@ -1,0 +1,61 @@
+name: demo-pulse-vps
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: demo-pulse-app
+    restart: unless-stopped
+    environment:
+      - APP_NAME=ServerLab Pulse
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=https://${DEMO_APP_DOMAIN:-pulse.yourdomain.com}
+      - APP_PATH_PREFIX=
+      - DB_CONNECTION=mysql
+      - DB_HOST=demo-pulse-db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-db_serverlab}
+      - DB_USERNAME=${DB_USERNAME:-pulse_user}
+      - DB_PASSWORD=${DB_PASSWORD:-pulse_secret_pass}
+      - SESSION_DRIVER=cookie
+      - CACHE_STORE=file
+    volumes:
+      - ${APP_DATA_DIR:-/opt/app-data}/demo-laravel-app/storage:/var/www/html/storage
+    networks:
+      - infra_network
+    depends_on:
+      - db
+
+  web:
+    image: nginx:alpine
+    container_name: demo-pulse-web
+    restart: unless-stopped
+    volumes:
+      - ./src:/var/www/html:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - infra_network
+    depends_on:
+      - app
+
+  db:
+    image: mariadb:10.11
+    container_name: demo-pulse-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret_pass}
+      MYSQL_DATABASE: ${DB_DATABASE:-db_serverlab}
+      MYSQL_USER: ${DB_USERNAME:-pulse_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-pulse_secret_pass}
+    volumes:
+      - ${APP_DATA_DIR:-/opt/app-data}/demo-laravel-app/database:/var/lib/mysql
+      - ./src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    networks:
+      - infra_network
+
+networks:
+  infra_network:
+    name: infra_network
+    external: true

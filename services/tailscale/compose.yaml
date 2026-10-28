@@ -1,0 +1,26 @@
+name: infra-tailscale
+
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: infra-tailscale
+    restart: unless-stopped
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY}
+      - TS_HOSTNAME=${TAILSCALE_HOSTNAME:-campus-lxc-node}
+      - TS_USERSPACE=true
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_EXTRA_ARGS=--tun=userspace-networking --socks5-server=0.0.0.0:1055 --outbound-http-proxy-listen=0.0.0.0:1055 --ssh
+    volumes:
+      # Structured as /opt/app-data/{app-or-service}/{component-or-service}
+      - ${APP_DATA_DIR:-/opt/app-data}/tailscale/state:/var/lib/tailscale
+    ports:
+      # SOCKS5/HTTP userspace proxy bound to localhost on host
+      - "127.0.0.1:${TAILSCALE_PORT:-1055}:1055"
+    networks:
+      - infra_network
+
+networks:
+  infra_network:
+    name: infra_network
+    external: true

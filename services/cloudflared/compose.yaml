@@ -1,0 +1,20 @@
+name: infra-cloudflared
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: infra-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    volumes:
+      # Structured as /opt/app-data/{app-or-service}/{component-or-service}
+      - ${APP_DATA_DIR:-/opt/app-data}/cloudflared/config:/etc/cloudflared
+    networks:
+      - infra_network
+
+networks:
+  infra_network:
+    name: infra_network
+    external: true
