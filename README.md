@@ -57,11 +57,12 @@ flowchart TD
     end
 
     subgraph LXC_Container ["Campus LXC Container (1 vCPU, 1 GB RAM)"]
+        Host_TS["Native Host Tailscale (systemd)<br>SSH (root@jbi24061) & SOCKS5 :1055"]
+
         subgraph Docker_Network ["Docker Network: infra_network"]
             direction TB
             CFTunnel["Cloudflare Tunnel<br>cloudflared"]
             NPM["Nginx Proxy Manager<br>Internal Router :80"]
-            Tailscale["Tailscale Userspace<br>SOCKS5 :1055 & SSH"]
             
             App1["ServerLab Pulse App<br>demo-pulse-web & app"]
             App2["Other Application 2<br>e.g. Next.js / API"]
@@ -69,7 +70,6 @@ flowchart TD
 
         subgraph Storage_Layer ["Storage Volumes: /opt/app-data/{app-or-service}/{component}"]
             Data_NPM[("npm/data<br>npm/letsencrypt")]
-            Data_TS[("tailscale/state")]
             Data_Apps[("demo-laravel-app/database<br>demo-laravel-app/storage")]
         end
     end
@@ -81,11 +81,10 @@ flowchart TD
     NPM -->|Route pulse.yourdomain.com| App1
     NPM -->|Route api.yourdomain.com| App2
 
-    Admin -->|Tailscale SSH / SOCKS5| Tailscale
-    Tailscale -.->|Private Access| Docker_Network
+    Admin -->|Direct Host SSH / SOCKS5| Host_TS
+    Host_TS -.->|Administrative Access| Docker_Network
 
     NPM -.-> Data_NPM
-    Tailscale -.-> Data_TS
     App1 -.-> Data_Apps
     App2 -.-> Data_Apps
 ```
@@ -101,16 +100,15 @@ Each service and application is isolated with its own modern Compose specificati
 ├── infra/                  <-- Core infrastructure repository
 │   ├── docs/               <-- Comprehensive guides & runbooks
 │   ├── scripts/            <-- Automation & diagnostic scripts
+│   │   ├── init-infra.sh   <-- Automated directory & network initializer
+│   │   ├── setup-host-tailscale.sh <-- Host Tailscale userspace installer
+│   │   └── diagnose.sh     <-- System & container diagnostic tool
 │   └── services/           <-- Modular, independently managed services
 │       ├── cloudflared/
 │       │   ├── compose.yaml
 │       │   ├── .env.example
 │       │   └── README.md
-│       ├── npm/
-│       │   ├── compose.yaml
-│       │   ├── .env.example
-│       │   └── README.md
-│       └── tailscale/
+│       └── npm/
 │           ├── compose.yaml
 │           ├── .env.example
 │           └── README.md
@@ -127,8 +125,6 @@ Each service and application is isolated with its own modern Compose specificati
     ├── npm/
     │   ├── data/           <-- NPM SQLite database & dynamic configs
     │   └── letsencrypt/    <-- SSL certificates & challenges
-    ├── tailscale/
-    │   └── state/          <-- Tailscale node keys & state
     └── demo-laravel-app/
         ├── database/       <-- DB data files (MariaDB / MySQL)
         └── storage/        <-- Application uploads & persistent files
@@ -167,12 +163,12 @@ nano .env
 docker compose up -d
 ```
 
-#### 3. Tailscale Userspace
+#### 3. Native Host Tailscale (Userspace Mode + Direct Host SSH)
 ```bash
-cd /opt/infra/services/tailscale
-nano .env
-docker compose up -d
+sudo ./scripts/setup-host-tailscale.sh
+sudo tailscale up --ssh --hostname=campus-lxc-node
 ```
+*(Provides passwordless remote SSH directly into `root@jbi24061` and private SOCKS5 proxy on `127.0.0.1:1055`).*
 
 ---
 

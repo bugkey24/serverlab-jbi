@@ -63,12 +63,12 @@ While the user has `root` access inside the container, the facility is **not a f
 
 ## 4. Operational Workarounds & Strategies
 
-### 4.1 VPN Strategy: Tailscale Userspace Mode
-Since TUN is unavailable, Tailscale must be run in **Userspace Networking Mode**.
-- **Mechanism:** `tailscaled --tun=userspace-networking`.
-- **Behavior:** Operates as a SOCKS5/HTTP proxy (default `localhost:1055`).
-- **Requirement:** Applications must be explicitly configured to use the proxy (e.g., `ALL_PROXY=socks5://localhost:1055`).
-- **Limitation:** Not a transparent VPN; cannot act as an exit node or subnet router.
+### 4.1 VPN Strategy: Native Host Tailscale (Userspace Mode)
+Since TUN is unavailable, Tailscale runs as a **native systemd service directly on the TurnKey host** in userspace networking mode.
+- **Mechanism:** `tailscaled --tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055`.
+- **SSH Access:** `tailscale up --ssh` gives direct administrative access to the host bash prompt (`root@jbi24061 ~#`).
+- **Why Host-Native (Not Containerized):** Containerized Tailscale isolates the SSH server inside Docker's Alpine container filesystem, preventing administrative control of the LXC host. Running Tailscale natively on the host provides full management access.
+- **Outbound Proxy:** Operates as a local SOCKS5/HTTP proxy (`127.0.0.1:1055`) for local tools (e.g., `ALL_PROXY=socks5://127.0.0.1:1055`).
 
 ### 4.2 External Exposure Strategy: Cloudflare Tunnel
 To bypass the Nginx Host (and its path restrictions) without needing a public IP or TUN.

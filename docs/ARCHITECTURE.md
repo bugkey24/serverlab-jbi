@@ -22,11 +22,10 @@ Following standard Linux Filesystem Hierarchy practices for modern infrastructur
 /opt/
 ├── infra/        # Core infrastructure orchestration (this repository)
 │   ├── docs/
-│   ├── scripts/
-│   └── services/
+│   ├── scripts/  # Automation (init-infra.sh, setup-host-tailscale.sh, diagnose.sh)
+│   └── services/ # Modular Docker compose stacks
 │       ├── cloudflared/
-│       ├── npm/
-│       └── tailscale/
+│       └── npm/
 ├── apps/         # Independent application repositories (Laravel, Node, Python, etc.)
 │   ├── demo-laravel-app/
 │   └── other-app/
@@ -37,8 +36,6 @@ Following standard Linux Filesystem Hierarchy practices for modern infrastructur
     ├── npm/
     │   ├── data/
     │   └── letsencrypt/
-    ├── tailscale/
-    │   └── state/
     └── demo-laravel-app/
         ├── database/
         └── storage/
@@ -49,8 +46,8 @@ To keep data cleanly partitioned without collision:
 - **Infrastructure Services**:
   - `/opt/app-data/npm/data`: NPM SQLite configuration database and runtime state.
   - `/opt/app-data/npm/letsencrypt`: SSL certificates and ACME challenges.
-  - `/opt/app-data/tailscale/state`: Tailscale node identity and auth state.
   - `/opt/app-data/cloudflared/config`: Optional local tunnel credentials and configuration.
+  - *(Note: Native Host Tailscale stores its persistent state directly in standard Linux `/var/lib/tailscale/`).*
 - **Applications (Example: `demo-laravel-app`)**:
   - `/opt/app-data/demo-laravel-app/database`: Database data directory (MariaDB / MySQL).
   - `/opt/app-data/demo-laravel-app/storage`: User uploads, cache, and runtime logs.
@@ -73,18 +70,18 @@ flowchart TD
     end
 
     subgraph Campus_LXC ["Campus Hosting LXC Container (1 vCPU, 1 GB RAM)"]
+        Host_TS["Native Host Tailscale Service<br>SSH (root@jbi24061) & SOCKS5 :1055"]
+
         subgraph Docker_Bridge ["Docker Bridge Network: infra_network"]
             direction TB
             CFTunnel["Cloudflare Tunnel Container<br>cloudflared"]
             NPM["Nginx Proxy Manager<br>Reverse Proxy & SSL Router"]
-            Tailscale["Tailscale Userspace Container<br>SOCKS5 Proxy :1055"]
             
             App1["ServerLab Pulse App<br>demo-pulse-web & app"]
         end
 
         subgraph Persistent_Storage ["/opt/app-data/{app-or-service}/{component}"]
             Data_NPM[("/opt/app-data/npm/data<br>/opt/app-data/npm/letsencrypt")]
-            Data_TS[("/opt/app-data/tailscale/state")]
             Data_Apps[("/opt/app-data/demo-laravel-app/database<br>/opt/app-data/demo-laravel-app/storage")]
         end
     end
@@ -95,11 +92,10 @@ flowchart TD
     CFTunnel -->|HTTP Internal| NPM
     NPM -->|Route / | App1
 
-    Admin -->|SOCKS5 Proxy / SSH| Tailscale
-    Tailscale -.->|Egress Internal Network| Docker_Bridge
+    Admin -->|Direct Host SSH / SOCKS5| Host_TS
+    Host_TS -.->|Administrative Control| Docker_Bridge
 
     NPM -.-> Data_NPM
-    Tailscale -.-> Data_TS
     App1 -.-> Data_Apps
 ```
 

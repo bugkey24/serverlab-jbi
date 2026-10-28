@@ -93,11 +93,10 @@ cp .env.example .env
 nano .env
 docker compose up -d
 
-# 3. Tailscale Userspace Node
-cd /opt/infra/services/tailscale
-cp .env.example .env
-nano .env
-docker compose up -d
+# 3. Native Host Tailscale (Userspace Netstack + SSH)
+chmod +x /opt/infra/scripts/setup-host-tailscale.sh
+/opt/infra/scripts/setup-host-tailscale.sh
+tailscale up --ssh --hostname=campus-lxc-node
 ```
 
 ### Step 6: Deploy Containerized Application
@@ -119,7 +118,6 @@ If unexpected issues occur and you need to restore the native LAMP stack immedia
 # 1. Stop all Docker infrastructure services
 cd /opt/infra/services/cloudflared && docker compose down
 cd /opt/infra/services/npm && docker compose down
-cd /opt/infra/services/tailscale && docker compose down
 
 # 2. Restart native Apache
 sudo systemctl start apache2

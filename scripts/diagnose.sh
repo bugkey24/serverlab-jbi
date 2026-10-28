@@ -45,11 +45,12 @@ else
   echo "infra-cloudflared is not currently running."
 fi
 
-echo -e "\n${YELLOW}7. Checking Tailscale Container:${NC}"
-if docker ps --format '{{.Names}}' | grep -q 'infra-tailscale'; then
-  docker logs --tail 10 infra-tailscale
+echo -e "\n${YELLOW}7. Checking Native Host Tailscale Service:${NC}"
+if systemctl is-active --quiet tailscaled 2>/dev/null; then
+  echo -e "${GREEN}Native host tailscaled service is ACTIVE${NC}"
+  tailscale status 2>/dev/null || echo "Tailscale installed but not logged in (run: tailscale up --ssh)"
 else
-  echo "infra-tailscale is not currently running."
+  echo -e "${RED}Native tailscaled service is not running (run: ./scripts/setup-host-tailscale.sh)${NC}"
 fi
 
 echo -e "\n${BLUE}===============================================${NC}"

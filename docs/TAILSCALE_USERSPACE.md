@@ -1,8 +1,8 @@
-# Tailscale in Userspace Mode (No TUN Device)
+# Tailscale in Userspace Mode (Host-Native Implementation)
 
-## 1. Context & The "No TUN" Problem
+## 1. Context & The "No TUN" Problem in Unprivileged LXC
 
-In unprivileged Linux Containers (such as standard Proxmox LXC containers without host-level device passthrough), the Linux kernel virtual network device `/dev/net/tun` does **not** exist or is permission-restricted.
+In unprivileged Linux Containers (such as standard Proxmox LXC containers without host-level kernel device passthrough), the virtual network device `/dev/net/tun` does **not** exist or is permission-restricted.
 
 ### What happens when running standard Tailscale or WireGuard:
 ```text
@@ -12,178 +12,130 @@ Because unprivileged containers cannot manipulate host kernel routing tables or 
 
 ---
 
-## 2. Solution: Userspace Networking Mode
+## 2. Solution: Native Host Userspace Networking (`netstack`)
 
 Tailscale provides an internal networking stack implemented entirely in Go (`netstack`). In this mode:
-1. Tailscale **does not** create a virtual network interface on the host kernel (`tailscale0`).
-2. Tailscale listens as an internal **SOCKS5 and HTTP proxy** (by default on `127.0.0.1:1055`).
-3. Tailscale can also run an internal SSH server (`tailscale ssh`) for secure, passwordless terminal access.
+1. Tailscale **does not** create a virtual network interface on the kernel (`tailscale0`).
+2. Tailscale listens as an internal **SOCKS5 and HTTP proxy** directly on `127.0.0.1:1055`.
+3. Tailscale runs an internal SSH server (`tailscale ssh`) directly on the host OS.
+
+### Why Containerized Tailscale Was Deprecated for Host Administration:
+Running Tailscale inside a Docker container traps the SSH daemon inside that container's isolated filesystem (e.g. Alpine Linux). Connecting via Tailscale SSH gave a shell inside `4be38c45cb23:~#` rather than the actual host system `root@jbi24061 ~#`, preventing system administration (`systemctl`, `docker`, `apt`).
+
+**The Native Host implementation solves this completely by running Tailscale directly on the Debian/TurnKey host:**
 
 ```mermaid
 flowchart TD
-    subgraph Host_Container ["Unprivileged LXC Container"]
-        subgraph TS_Container ["Docker: infra-tailscale"]
-            TS_Engine["Tailscaled (netstack engine)"]
-            Proxy["SOCKS5 / HTTP Proxy (:1055)"]
-            TSSSH["Tailscale SSH Daemon"]
-            TS_Engine --> Proxy
-            TS_Engine --> TSSSH
-        end
+    subgraph Campus_LXC ["Campus LXC Container: root@jbi24061"]
+        Host_TS["Native Host tailscaled (systemd)<br>--tun=userspace-networking"]
+        Host_SSH["Tailscale SSH Engine<br>(Drops directly into host bash)"]
+        Host_Proxy["SOCKS5 / HTTP Proxy (:1055)<br>Bound to 127.0.0.1"]
 
-        subgraph Local_Services ["Local Tools & Services"]
-            Curl["curl / git"]
-            LaravelApp["Laravel Backend Client"]
-            Curl -->|ALL_PROXY=socks5://tailscale:1055| Proxy
-            LaravelApp -->|HTTP/SOCKS Proxy| Proxy
+        Host_TS --> Host_SSH
+        Host_TS --> Host_Proxy
+
+        subgraph Host_Workloads ["Host Workloads & Docker"]
+            DockerContainers["Docker Apps & Services<br>(NPM, Cloudflared, Laravel)"]
+            LocalCLI["Host Tools (curl, git, composer)"]
+            LocalCLI -->|ALL_PROXY=socks5://127.0.0.1:1055| Host_Proxy
+            DockerContainers -->|Proxy via 127.0.0.1:1055| Host_Proxy
         end
     end
 
     subgraph Tailscale_Coordination ["Tailscale Control Plane / WireGuard"]
-        AdminDevice["Admin Laptop / Phone<br>(Tailscale Client)"]
-        AdminDevice -->|Direct WireGuard Peer-to-Peer| TS_Engine
-        AdminDevice -->|tailscale ssh campus-lxc-node| TSSSH
+        AdminDevice["Admin Workstation / Laptop<br>(Tailscale Client)"]
+        AdminDevice -->|Direct WireGuard Peer-to-Peer| Host_TS
+        AdminDevice -->|tailscale ssh campus-lxc-node| Host_SSH
     end
 ```
 
 ---
 
-## 2. Architecture Comparison: Host-Level vs. Containerized
-
-Depending on your access requirements:
-
-| Feature | Pattern A: Host-Level Tailscale (Recommended) | Pattern B: Containerized Tailscale |
-| :--- | :--- | :--- |
-| **Where Tailscale Runs** | Direct systemd service on TurnKey Debian host | Isolated Docker container (`infra-tailscale`) |
-| **Tailscale SSH Target** | **Host OS** (`root@jbi24061 ~#`) | **Alpine Container** (`root@4be38c45cb23:~#`) |
-| **Access to Host Services** | Full native control (`systemctl`, `docker`, `/opt`) | Isolated inside container namespace |
-| **Outbound App Proxy** | `127.0.0.1:1055` directly on host | Forwarded from container via Docker port |
-| **Setup Script** | [`scripts/setup-host-tailscale.sh`](../scripts/setup-host-tailscale.sh) | `services/tailscale/compose.yaml` |
-
-> [!IMPORTANT]
-> If your primary goal is remote terminal administration into the TurnKey Linux LXC container (`root@jbi24061`), use **Pattern A (Host-Level)**. Running Tailscale inside a Docker container intercepts Tailscale SSH within that container's own Alpine filesystem.
-
----
-
-## 3. Pattern A: Host-Level Deployment (Direct LXC SSH Access)
+## 3. Host-Level Deployment Guide
 
 ### Automated Setup
 On your TurnKey Debian host (`root@jbi24061`):
 ```bash
-sudo chmod +x /opt/infra/scripts/setup-host-tailscale.sh
-sudo /opt/infra/scripts/setup-host-tailscale.sh
+cd /opt/infra
+chmod +x scripts/setup-host-tailscale.sh
+./scripts/setup-host-tailscale.sh
 ```
 
-### Manual Setup Steps
-1. **Configure systemd for Userspace Netstack**:
-   Create or edit `/etc/default/tailscaled`:
+### Manual Configuration Breakdown
+If you prefer configuring it manually:
+
+1. **Install Tailscale Package**:
    ```bash
+   curl -fsSL https://tailscale.com/install.sh | sh
+   ```
+
+2. **Configure `/etc/default/tailscaled`**:
+   Instruct the daemon to use userspace netstack and start proxies on loopback:
+   ```bash
+   cat << 'EOF' > /etc/default/tailscaled
    FLAGS="--tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055"
+   EOF
    ```
-2. **Reload and Restart**:
+
+3. **Reload and Enable Service**:
    ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now tailscaled
+   systemctl daemon-reload
+   systemctl enable --now tailscaled
    ```
-3. **Authenticate with Tailscale SSH**:
+
+4. **Authenticate Node with SSH Enabled**:
    ```bash
-   sudo tailscale up --ssh --hostname=campus-lxc-node
+   tailscale up --ssh --hostname=campus-lxc-node
    ```
+   *(Or headlessly: `tailscale up --authkey=tskey-auth-xxxx --ssh --hostname=campus-lxc-node`)*.
 
 ---
 
-## 4. Pattern B: Docker Containerized Deployment
+## 4. Tailscale ACL Policy Configuration
 
-### 4.1 Docker Compose Configuration (`services/tailscale/compose.yaml`)
-
-```yaml
-name: infra-tailscale
-
-services:
-  tailscale:
-    image: tailscale/tailscale:latest
-    container_name: infra-tailscale
-    restart: unless-stopped
-    environment:
-      - TS_AUTHKEY=${TAILSCALE_AUTHKEY}
-      - TS_HOSTNAME=${TAILSCALE_HOSTNAME:-campus-lxc-node}
-      - TS_USERSPACE=true
-      - TS_STATE_DIR=/var/lib/tailscale
-      - TS_SOCKS5_SERVER=0.0.0.0:1055
-      - TS_OUTBOUND_HTTP_PROXY_LISTEN=0.0.0.0:1055
-      - TS_EXTRA_ARGS=--ssh
-    volumes:
-      - ${APP_DATA_DIR:-/opt/app-data}/tailscale/state:/var/lib/tailscale
-    ports:
-      - "127.0.0.1:${TAILSCALE_PORT:-1055}:1055"
-    networks:
-      - infra_network
-
-networks:
-  infra_network:
-    name: infra_network
-    external: true
-```
-
-### 3.2 Key Arguments Explained:
-- `TS_USERSPACE=true`: Instructs the container entrypoint to start `tailscaled` with `--tun=userspace-networking` (bypassing `/dev/net/tun`).
-- `TS_SOCKS5_SERVER=0.0.0.0:1055`: Starts a local SOCKS5 proxy on port 1055, accessible to other containers on `infra_network`.
-- `TS_OUTBOUND_HTTP_PROXY_LISTEN=0.0.0.0:1055`: Starts a local HTTP/HTTPS proxy on the same port.
-- `TS_EXTRA_ARGS=--ssh`: Flags forwarded specifically to `tailscale up`. Enables Tailscale SSH so you can run `tailscale ssh <hostname>` from any peer node without opening port 22. *(Note: `--tun` is a daemon argument, never pass `--tun` into `TS_EXTRA_ARGS` as `tailscale up` does not accept it).*
-
----
-
-## 4. Step-by-Step Setup Guide
-
-### Step 1: Generate an Auth Key
-1. Visit the [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys).
-2. Click **Generate auth key**.
-3. Options:
-   - **Reusable**: Yes (useful if rebuilding container).
-   - **Ephemeral**: Optional (select if the container is temporary; uncheck for persistent nodes).
-   - **Pre-authorized**: Recommended.
-   - **Tags**: (e.g., `tag:server`).
-4. Copy the generated key (`tskey-auth-...`).
-
-### Step 2: Configure Environment
-In `/opt/infra/services/tailscale/`:
-```bash
-cp .env.example .env
-nano .env
-```
-Set values:
-```bash
-APP_DATA_DIR=/opt/app-data
-TAILSCALE_AUTHKEY=tskey-auth-kXXXXX-YOUR_KEY_HERE
-TAILSCALE_HOSTNAME=campus-lxc-node
-TAILSCALE_PORT=1055
-```
-
-### Step 3: Launch Tailscale Service
-```bash
-cd /opt/infra/services/tailscale
-docker compose up -d
-docker compose logs -f
-```
-Verify output displays:
+Tailscale SSH is secure by default. By default, connections to `root` or unlisted users will be refused with:
 ```text
-boot: log in succeeded
-...
-Tailscale is up and running!
+tailscale: tailnet policy does not permit you to SSH as user "root"
 ```
+
+### Fix in Tailscale Admin Console:
+1. Navigate to [Tailscale Admin Console: Access Controls](https://login.tailscale.com/admin/acls).
+2. Ensure the `"ssh"` policy block explicitly allows `root` (and any local client usernames):
+
+```json
+"ssh": [
+  {
+    "action": "accept",
+    "src": ["autogroup:member"],
+    "dst": ["autogroup:self", "tag:server"],
+    "users": ["root", "autogroup:nonroot"]
+  }
+]
+```
+3. Click **Save**.
 
 ---
 
-## 5. How to Use the Userspace Connection
+## 5. How to Use the Connection
 
-### Scenario A: Remote Access via Tailscale SSH
-On your developer laptop (with Tailscale installed and connected):
+### Scenario A: Direct Remote SSH Access to LXC Host
+From your development laptop:
 ```bash
-tailscale ssh campus-lxc-node
+ssh root@campus-lxc-node
 ```
-You now have secure, encrypted shell access without exposing public SSH ports.
+or:
+```bash
+tailscale ssh root@campus-lxc-node
+```
+You will land directly in your TurnKey Debian 12 environment:
+```text
+Welcome to Jbi24061, TurnKey GNU/Linux 18.0 (Debian 12/Bookworm)
+root@jbi24061 ~#
+```
 
-### Scenario B: Using Local Applications Through the SOCKS5 Proxy
-To route outgoing traffic from the server through your Tailscale network (e.g. to reach a private database on your tailnet):
+### Scenario B: Route Local Application Traffic through Tailnet
+To route outgoing server traffic through your private Tailnet (e.g. to reach an internal staging database or API):
+
 ```bash
 export ALL_PROXY=socks5://127.0.0.1:1055
 curl https://private-service.tailnet-name.ts.net
@@ -202,31 +154,13 @@ $response = Http::withOptions([
 
 ## 6. Troubleshooting & Gotchas
 
-#### 1. SSH lands in Alpine Linux (`Welcome to Alpine!`) instead of TurnKey Host
-- **Cause**: Tailscale was started with `--ssh` inside the Docker container (`infra-tailscale`). The official Tailscale Docker image runs Alpine Linux.
-- **Fix**: To SSH into the real Debian host (`root@jbi24061`), stop the Docker Tailscale container and run Tailscale directly on the host using `scripts/setup-host-tailscale.sh`.
+#### 1. SSH lands in Alpine Linux (`Welcome to Alpine!`)
+- **Cause**: Tailscale was running in a Docker container with `--ssh`. Containerized Tailscale traps SSH inside its own isolated container filesystem.
+- **Fix**: Stop and remove the Docker Tailscale container (`docker rm -f infra-tailscale`) and run Tailscale directly on the host using `scripts/setup-host-tailscale.sh`.
 
-#### 2. `tailscale: tailnet policy does not permit you to SSH as user "root"` (or `"asus"`)
-- **Cause**: Tailscale ACLs enforce strict SSH permission. By default, high-privilege accounts like `root` are blocked unless explicitly permitted.
-- **Fix**: Open the [Tailscale Admin Console: Access Controls](https://login.tailscale.com/admin/acls) and add `root` to the `ssh` block:
-  ```json
-  "ssh": [
-    {
-      "action": "accept",
-      "src": ["autogroup:member"],
-      "dst": ["autogroup:self", "tag:server"],
-      "users": ["root", "autogroup:nonroot"]
-    }
-  ]
-  ```
+#### 2. `tailscale: tailnet policy does not permit you to SSH as user "root"`
+- **Cause**: The Tailscale ACL policy does not have `root` listed in the `"users"` array of the `"ssh"` block.
+- **Fix**: Add `"root"` to the `"ssh"` rule in the Tailscale Admin Console.
 
-#### 3. Container fails with `flag provided but not defined: -tun`
-- **Cause**: `--tun=userspace-networking` was incorrectly placed in `TS_EXTRA_ARGS`. In Tailscale's Docker container, `TS_EXTRA_ARGS` is passed to the CLI command `tailscale up`, whereas `--tun` is a flag strictly for the `tailscaled` daemon.
-- **Fix**: Remove `--tun=...` from `TS_EXTRA_ARGS`. Setting `TS_USERSPACE=true` automatically launches `tailscaled` with `--tun=userspace-networking`.
-
-#### 2. Container fails with `failed to create TUN device`
-- **Cause**: `TS_USERSPACE=true` was omitted or set to `false` without `/dev/net/tun` mapped from the host.
-- **Fix**: Ensure `TS_USERSPACE=true` is present in your container environment.
-
-#### 3. Ping fails to Tailscale IP
-- **Expected Behavior**: In userspace networking mode, standard OS `ping` from the container host **will not work** because there is no Layer-3 kernel interface (`tailscale0`). Traffic must be proxied via SOCKS5/HTTP or accessed through `tailscale ssh`.
+#### 3. Standard `ping` fails to Tailscale IP
+- **Expected Behavior**: In userspace networking mode, standard OS `ping` from the container host **will not work** because there is no Layer-3 kernel interface (`tailscale0`). All interaction is handled via Tailscale SSH or via the SOCKS5/HTTP proxies at `127.0.0.1:1055`.

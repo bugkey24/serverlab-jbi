@@ -25,11 +25,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Documented cryptographically secure manual key generation workflows (via PowerShell RNG and OpenSSL) in `TRACK1_MANUAL_WEBMIN_GUIDE.md`.
 
 ### Changed
-- **Tailscale Userspace Configuration Fix**:
-  - Corrected parameter routing in [`services/tailscale/compose.yaml`](services/tailscale/compose.yaml) and [`docs/TAILSCALE_USERSPACE.md`](docs/TAILSCALE_USERSPACE.md).
-  - Resolved `flag provided but not defined: -tun` container crash loop by decoupling daemon arguments from client arguments:
-    - Dedicated native environment variables `TS_SOCKS5_SERVER=0.0.0.0:1055` and `TS_OUTBOUND_HTTP_PROXY_LISTEN=0.0.0.0:1055` now configure userspace proxies directly.
-    - Set `TS_EXTRA_ARGS=--ssh` to pass CLI flags intended strictly for `tailscale up`.
+- **Architectural Shift: Full Transition to Native Host Tailscale**:
+  - Deprecated and removed the containerized Tailscale stack (`services/tailscale/`) to prevent SSH namespace entrapment (landing in Alpine Linux container shells instead of host TurnKey Debian).
+  - Adopted native host `tailscaled` service managed by Debian systemd as the single source of truth for administrative SSH access and application proxying (`127.0.0.1:1055`).
+  - Updated all infrastructure documentation, architecture topology diagrams, and automation scripts (`init-infra.sh`, `diagnose.sh`, `MIGRATION_LAMP_TO_DOCKER.md`, `TROUBLESHOOTING.md`, `TAILSCALE_USERSPACE.md`) to reflect the host-native design.
 - **ServerLab Pulse Controller & View Hardening**:
   - Updated `ServerStatusController.php` to initialize `$nodes` as an `Illuminate\Support\Collection` via `collect()` rather than a raw array.
   - Hardened `dashboard.blade.php` with type-agnostic checks (`empty($nodes) || count($nodes) === 0`) to prevent `Call to a member function isEmpty() on array` exceptions before MariaDB tables are imported.

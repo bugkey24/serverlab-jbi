@@ -28,20 +28,18 @@ INFRA_DIR="/opt/infra"
 
 echo -e "${BLUE}Creating standard directory hierarchy (/opt/app-data/{app-or-service}/{component})...${NC}"
 mkdir -p "${APP_DATA_DIR}/cloudflared/config"
-mkdir -p "${APP_DATA_DIR}/tailscale/state"
 mkdir -p "${APP_DATA_DIR}/npm/data"
 mkdir -p "${APP_DATA_DIR}/npm/letsencrypt"
 mkdir -p "${APPS_DIR}"
 
 echo -e "${GREEN}Directories successfully initialized:${NC}"
 echo "  - Cloudflare Tunnel: ${APP_DATA_DIR}/cloudflared/config"
-echo "  - Tailscale:         ${APP_DATA_DIR}/tailscale/state"
 echo "  - NPM Data:          ${APP_DATA_DIR}/npm/data"
 echo "  - NPM SSL:           ${APP_DATA_DIR}/npm/letsencrypt"
 echo "  - Applications:      ${APPS_DIR}/"
 
 # Prepare per-service .env files if not already present
-for svc in cloudflared npm tailscale; do
+for svc in cloudflared npm; do
   svc_dir="${INFRA_DIR}/services/${svc}"
   if [ -d "${svc_dir}" ]; then
     if [ ! -f "${svc_dir}/.env" ] && [ -f "${svc_dir}/.env.example" ]; then
@@ -81,7 +79,8 @@ fi
 echo -e "${GREEN}=== Setup completed successfully! ===${NC}"
 echo -e "Next steps:"
 echo -e "  1. Configure .env in each service directory under ${INFRA_DIR}/services/"
-echo -e "  2. Start services independently as needed:"
+echo -e "  2. Start core edge and proxy services:"
 echo -e "     - ${YELLOW}cd ${INFRA_DIR}/services/npm && docker compose up -d${NC}"
 echo -e "     - ${YELLOW}cd ${INFRA_DIR}/services/cloudflared && docker compose up -d${NC}"
-echo -e "     - ${YELLOW}cd ${INFRA_DIR}/services/tailscale && docker compose up -d${NC}"
+echo -e "  3. Configure Native Host Tailscale for secure remote SSH & application proxying:"
+echo -e "     - ${YELLOW}${INFRA_DIR}/scripts/setup-host-tailscale.sh${NC}"

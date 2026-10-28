@@ -27,22 +27,33 @@ docker network inspect infra_network
 
 ## 2. Service-Specific Troubleshooting
 
-### 2.1 Tailscale Userspace
+### 2.1 Tailscale Userspace (Host-Native Implementation)
+
+#### Symptom: SSH lands in Alpine Linux (`Welcome to Alpine!`) instead of TurnKey Host
+- **Cause**: Tailscale was running in a Docker container with `--ssh`. Containerized Tailscale traps SSH inside its own isolated container filesystem.
+- **Resolution**:
+  1. Transition to native host setup: run `/opt/infra/scripts/setup-host-tailscale.sh`.
+  2. Authenticate directly on the host: `tailscale up --ssh --hostname=campus-lxc-node`.
+
+#### Symptom: `tailscale: tailnet policy does not permit you to SSH as user "root"` (or `"asus"`)
+- **Cause**: Tailscale ACLs enforce zero-trust policies and block unlisted users.
+- **Resolution**:
+  1. Open [Tailscale Admin Console: Access Controls](https://login.tailscale.com/admin/acls).
+  2. Add `root` (and any local client usernames) to the `"ssh"` block.
 
 #### Symptom: `failed to create TUN device: open /dev/net/tun: no such file or directory`
-- **Cause**: The container attempted to initialize kernel TUN device mode inside an unprivileged container.
+- **Cause**: The daemon attempted to initialize kernel TUN device mode inside an unprivileged container.
 - **Resolution**:
-  1. Inspect `/opt/infra/services/tailscale/compose.yaml`.
-  2. Ensure `TS_USERSPACE=true` is set.
-  3. Ensure `TS_EXTRA_ARGS` includes `--tun=userspace-networking`.
-  4. Ensure no capabilities like `NET_ADMIN` or device mounts `/dev/net/tun` are specified if unprivileged.
+  1. Inspect `/etc/default/tailscaled` on the host.
+  2. Ensure `FLAGS="--tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055"` is present.
+  3. Restart the service: `systemctl restart tailscaled`.
 
 #### Symptom: Cannot connect via `tailscale ssh <node>`
-- **Cause**: Key expiry or missing `--ssh` flag on tailscaled.
+- **Cause**: Key expiry or missing `--ssh` flag on `tailscale up`.
 - **Resolution**:
-  1. Verify Tailscale container logs: `docker logs infra-tailscale`.
+  1. Check host service status: `systemctl status tailscaled`.
   2. Check if the node is online in the [Tailscale Admin Console](https://login.tailscale.com/admin/machines).
-  3. Re-authenticate if the key expired.
+  3. Re-authenticate: `tailscale up --ssh --hostname=campus-lxc-node`.
 
 ---
 
