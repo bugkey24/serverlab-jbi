@@ -21,11 +21,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Documented cryptographically secure manual key generation workflows (via PowerShell RNG and OpenSSL) in `TRACK1_MANUAL_WEBMIN_GUIDE.md`.
 
 ### Changed
+- **Tailscale Userspace Configuration Fix**:
+  - Corrected parameter routing in [`services/tailscale/compose.yaml`](services/tailscale/compose.yaml) and [`docs/TAILSCALE_USERSPACE.md`](docs/TAILSCALE_USERSPACE.md).
+  - Resolved `flag provided but not defined: -tun` container crash loop by decoupling daemon arguments from client arguments:
+    - Dedicated native environment variables `TS_SOCKS5_SERVER=0.0.0.0:1055` and `TS_OUTBOUND_HTTP_PROXY_LISTEN=0.0.0.0:1055` now configure userspace proxies directly.
+    - Set `TS_EXTRA_ARGS=--ssh` to pass CLI flags intended strictly for `tailscale up`.
 - **ServerLab Pulse Controller & View Hardening**:
   - Updated `ServerStatusController.php` to initialize `$nodes` as an `Illuminate\Support\Collection` via `collect()` rather than a raw array.
   - Hardened `dashboard.blade.php` with type-agnostic checks (`empty($nodes) || count($nodes) === 0`) to prevent `Call to a member function isEmpty() on array` exceptions before MariaDB tables are imported.
-- **Mermaid Syntax Compatibility**:
-  - Quoted subgraph and node labels containing parentheses across `README.md` and `docs/ARCHITECTURE.md` to fix parser errors on GitHub.
+- **Mermaid Syntax Hardening across Documentation**:
+  - Enclosed all subgraph headers in strict bracket-quote syntax (`subgraph ID ["Label"]`) to handle special characters, slashes, and curly braces safely.
+  - Quoted all cylinder storage nodes (`[("npm/data<br>npm/letsencrypt")]`) and replaced unescaped newline `\n` characters with HTML `<br>` breaks.
+  - Standardized edge connectors to pipe notation (`-->|Outbound QUIC Tunnel|`) to resolve GitHub Mermaid parser token errors (`got 'PS'`, `Expecting 'SQE'`).
+  - Applied diagram fixes across `README.md`, `docs/ARCHITECTURE.md`, `docs/CLOUDFLARE_TUNNEL.md`, and `docs/TAILSCALE_USERSPACE.md`.
 - **Git & Build Hygiene**:
   - Updated `.gitignore` to strictly ignore large generated distribution archives (`*.zip`, `*.tar.gz`, `dist/`).
   - Audited all directories to ensure zero live `.env`, certificate, or sensitive token files are tracked.

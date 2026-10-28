@@ -14,21 +14,21 @@ Rather than creating a separate Cloudflare Public Hostname entry for every new c
 
 ```mermaid
 flowchart LR
-    subgraph Cloudflare_Zero_Trust [Cloudflare Edge]
-        DNS["DNS Records\n(*.yourdomain.com)"]
+    subgraph Cloudflare_Zero_Trust ["Cloudflare Edge"]
+        DNS["DNS Records<br>(*.yourdomain.com)"]
         Tunnel_Edge["Cloudflare Tunnel Worker"]
         DNS --> Tunnel_Edge
     end
 
-    subgraph Server_Infra [/opt/infra Docker Network]
-        Cloudflared["cloudflared\n(Outbound Daemon)"]
-        NPM["Nginx Proxy Manager\n(Internal :80 / :443)"]
+    subgraph Server_Infra ["/opt/infra Docker Network"]
+        Cloudflared["cloudflared<br>(Outbound Daemon)"]
+        NPM["Nginx Proxy Manager<br>(Internal :80 / :443)"]
         
-        App_A["App A: Laravel Web\n(app.yourdomain.com)"]
-        App_B["App B: API / Docs\n(api.yourdomain.com)"]
+        App_A["App A: Laravel Web<br>(app.yourdomain.com)"]
+        App_B["App B: API / Docs<br>(api.yourdomain.com)"]
     end
 
-    Tunnel_Edge == Encrypted QUIC Tunnel ==> Cloudflared
+    Tunnel_Edge -->|Encrypted QUIC Tunnel| Cloudflared
     Cloudflared -->|HTTP Ingress| NPM
     NPM -->|Internal Proxy Pass| App_A
     NPM -->|Internal Proxy Pass| App_B

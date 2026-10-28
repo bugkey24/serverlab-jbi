@@ -61,37 +61,37 @@ To keep data cleanly partitioned without collision:
 
 ```mermaid
 flowchart TD
-    subgraph Public_Internet [Public Internet / Remote Users]
-        User[Browser Client]
-        Admin[Developer / Admin via VPN]
+    subgraph Public_Internet ["Public Internet / Remote Users"]
+        User["Browser Client"]
+        Admin["Developer / Admin via VPN"]
     end
 
-    subgraph Cloudflare_Edge [Cloudflare Edge Network]
-        CF_DNS[DNS: *.yourdomain.com]
-        CF_Edge[Cloudflare SSL Termination & DDoS Protection]
+    subgraph Cloudflare_Edge ["Cloudflare Edge Network"]
+        CF_DNS["DNS: *.yourdomain.com"]
+        CF_Edge["Cloudflare SSL Termination & DDoS Protection"]
         CF_DNS --> CF_Edge
     end
 
     subgraph Campus_LXC ["Campus Hosting LXC Container (1 vCPU, 1 GB RAM)"]
-        subgraph Docker_Bridge [Docker Bridge Network: infra_network]
+        subgraph Docker_Bridge ["Docker Bridge Network: infra_network"]
             direction TB
-            CFTunnel[Cloudflare Tunnel Container\ncloudflared]
-            NPM[Nginx Proxy Manager\nReverse Proxy & SSL Router]
-            Tailscale[Tailscale Userspace Container\nSOCKS5 Proxy :1055]
+            CFTunnel["Cloudflare Tunnel Container<br>cloudflared"]
+            NPM["Nginx Proxy Manager<br>Reverse Proxy & SSL Router"]
+            Tailscale["Tailscale Userspace Container<br>SOCKS5 Proxy :1055"]
             
-            App1[ServerLab Pulse App\ndemo-pulse-web & app]
+            App1["ServerLab Pulse App<br>demo-pulse-web & app"]
         end
 
-        subgraph Persistent_Storage [/opt/app-data/{app-or-service}/{component}]
-            Data_NPM[(/opt/app-data/npm/data\n/opt/app-data/npm/letsencrypt)]
-            Data_TS[(/opt/app-data/tailscale/state)]
-            Data_Apps[(/opt/app-data/demo-laravel-app/database\n/opt/app-data/demo-laravel-app/storage)]
+        subgraph Persistent_Storage ["/opt/app-data/{app-or-service}/{component}"]
+            Data_NPM[("/opt/app-data/npm/data<br>/opt/app-data/npm/letsencrypt")]
+            Data_TS[("/opt/app-data/tailscale/state")]
+            Data_Apps[("/opt/app-data/demo-laravel-app/database<br>/opt/app-data/demo-laravel-app/storage")]
         end
     end
 
     %% Connections
     User -->|HTTPS :443| CF_DNS
-    CF_Edge == Outbound Encrypted Tunnel (gRPC/QUIC) ==> CFTunnel
+    CF_Edge -->|Outbound Encrypted Tunnel (gRPC/QUIC)| CFTunnel
     CFTunnel -->|HTTP Internal| NPM
     NPM -->|Route / | App1
 

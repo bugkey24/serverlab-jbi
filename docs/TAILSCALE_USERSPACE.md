@@ -21,8 +21,8 @@ Tailscale provides an internal networking stack implemented entirely in Go (`net
 
 ```mermaid
 flowchart TD
-    subgraph Host_Container [Unprivileged LXC Container]
-        subgraph TS_Container [Docker: infra-tailscale]
+    subgraph Host_Container ["Unprivileged LXC Container"]
+        subgraph TS_Container ["Docker: infra-tailscale"]
             TS_Engine["Tailscaled (netstack engine)"]
             Proxy["SOCKS5 / HTTP Proxy (:1055)"]
             TSSSH["Tailscale SSH Daemon"]
@@ -30,7 +30,7 @@ flowchart TD
             TS_Engine --> TSSSH
         end
 
-        subgraph Local_Services [Local Tools & Services]
+        subgraph Local_Services ["Local Tools & Services"]
             Curl["curl / git"]
             LaravelApp["Laravel Backend Client"]
             Curl -->|ALL_PROXY=socks5://tailscale:1055| Proxy
@@ -38,8 +38,8 @@ flowchart TD
         end
     end
 
-    subgraph Tailscale_Coordination [Tailscale Control Plane / WireGuard]
-        AdminDevice["Admin Laptop / Phone\n(Tailscale Client)"]
+    subgraph Tailscale_Coordination ["Tailscale Control Plane / WireGuard"]
+        AdminDevice["Admin Laptop / Phone<br>(Tailscale Client)"]
         AdminDevice -->|Direct WireGuard Peer-to-Peer| TS_Engine
         AdminDevice -->|tailscale ssh campus-lxc-node| TSSSH
     end
@@ -64,9 +64,11 @@ services:
       - TS_HOSTNAME=${TAILSCALE_HOSTNAME:-campus-lxc-node}
       - TS_USERSPACE=true
       - TS_STATE_DIR=/var/lib/tailscale
-      - TS_EXTRA_ARGS=--tun=userspace-networking --socks5-server=0.0.0.0:1055 --outbound-http-proxy-listen=0.0.0.0:1055 --ssh
+      - TS_SOCKS5_SERVER=0.0.0.0:1055
+      - TS_OUTBOUND_HTTP_PROXY_LISTEN=0.0.0.0:1055
+      - TS_EXTRA_ARGS=--ssh
     volumes:
-      - ${APP_DATA_DIR:-/opt/app-data}/infra/tailscale:/var/lib/tailscale
+      - ${APP_DATA_DIR:-/opt/app-data}/tailscale/state:/var/lib/tailscale
     ports:
       - "127.0.0.1:${TAILSCALE_PORT:-1055}:1055"
     networks:
@@ -79,10 +81,10 @@ networks:
 ```
 
 ### 3.2 Key Arguments Explained:
-- `TS_USERSPACE=true`: Instructs the startup script to use user-space networking.
-- `--tun=userspace-networking`: Overrides interface creation.
-- `--socks5-server=0.0.0.0:1055`: Exposes SOCKS5 proxy on port 1055 to other containers on `infra_network`.
-- `--ssh`: Enables Tailscale SSH. You can connect from any authorized device on your tailnet with `tailscale ssh <hostname>` without exposing port 22.
+- `TS_USERSPACE=true`: Instructs the container entrypoint to start `tailscaled` with `--tun=userspace-networking` (bypassing `/dev/net/tun`).
+- `TS_SOCKS5_SERVER=0.0.0.0:1055`: Starts a local SOCKS5 proxy on port 1055, accessible to other containers on `infra_network`.
+- `TS_OUTBOUND_HTTP_PROXY_LISTEN=0.0.0.0:1055`: Starts a local HTTP/HTTPS proxy on the same port.
+- `TS_EXTRA_ARGS=--ssh`: Flags forwarded specifically to `tailscale up`. Enables Tailscale SSH so you can run `tailscale ssh <hostname>` from any peer node without opening port 22. *(Note: `--tun` is a daemon argument, never pass `--tun` into `TS_EXTRA_ARGS` as `tailscale up` does not accept it).*
 
 ---
 
@@ -156,9 +158,13 @@ $response = Http::withOptions([
 
 ## 6. Troubleshooting & Gotchas
 
-#### 1. Container fails with `failed to create TUN device`
-- **Cause**: `--tun=userspace-networking` was omitted or overridden.
-- **Fix**: Verify `TS_USERSPACE=true` and `TS_EXTRA_ARGS=--tun=userspace-networking` are properly set in your environment.
+#### 1. Container fails with `flag provided but not defined: -tun`
+- **Cause**: `--tun=userspace-networking` was incorrectly placed in `TS_EXTRA_ARGS`. In Tailscale's Docker container, `TS_EXTRA_ARGS` is passed to the CLI command `tailscale up`, whereas `--tun` is a flag strictly for the `tailscaled` daemon.
+- **Fix**: Remove `--tun=...` from `TS_EXTRA_ARGS`. Setting `TS_USERSPACE=true` automatically launches `tailscaled` with `--tun=userspace-networking`.
 
-#### 2. Ping fails to Tailscale IP
+#### 2. Container fails with `failed to create TUN device`
+- **Cause**: `TS_USERSPACE=true` was omitted or set to `false` without `/dev/net/tun` mapped from the host.
+- **Fix**: Ensure `TS_USERSPACE=true` is present in your container environment.
+
+#### 3. Ping fails to Tailscale IP
 - **Expected Behavior**: In userspace networking mode, standard OS `ping` from the container host **will not work** because there is no Layer-3 kernel interface (`tailscale0`). Traffic must be proxied via SOCKS5/HTTP or accessed through `tailscale ssh`.

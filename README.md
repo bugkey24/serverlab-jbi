@@ -45,38 +45,38 @@ This repository transforms a restricted container into a modern hosting node by 
 
 ```mermaid
 flowchart TD
-    subgraph Clients [Public Internet & Developers]
-        WebUsers[End Users / Browsers]
-        Admin[Developer / Admin via Tailnet]
+    subgraph Clients ["Public Internet & Developers"]
+        WebUsers["End Users / Browsers"]
+        Admin["Developer / Admin via Tailnet"]
     end
 
-    subgraph Cloudflare_Edge [Cloudflare Edge Network]
+    subgraph Cloudflare_Edge ["Cloudflare Edge Network"]
         CF_DNS["DNS: *.yourdomain.com"]
-        CF_Edge[Cloudflare SSL Termination & WAF]
+        CF_Edge["Cloudflare SSL Termination & WAF"]
         CF_DNS --> CF_Edge
     end
 
     subgraph LXC_Container ["Campus LXC Container (1 vCPU, 1 GB RAM)"]
-        subgraph Docker_Network [Docker Network: infra_network]
+        subgraph Docker_Network ["Docker Network: infra_network"]
             direction TB
-            CFTunnel[Cloudflare Tunnel\ncloudflared]
-            NPM[Nginx Proxy Manager\nInternal Router :80]
-            Tailscale[Tailscale Userspace\nSOCKS5 :1055 & SSH]
+            CFTunnel["Cloudflare Tunnel<br>cloudflared"]
+            NPM["Nginx Proxy Manager<br>Internal Router :80"]
+            Tailscale["Tailscale Userspace<br>SOCKS5 :1055 & SSH"]
             
-            App1[ServerLab Pulse App\ndemo-pulse-web & app]
-            App2[Other Application 2\ne.g. Next.js / API]
+            App1["ServerLab Pulse App<br>demo-pulse-web & app"]
+            App2["Other Application 2<br>e.g. Next.js / API"]
         end
 
-        subgraph Storage_Layer [Storage Volumes: /opt/app-data/{app-or-service}/{component}]
-            Data_NPM[(npm/data\nnpm/letsencrypt)]
-            Data_TS[(tailscale/state)]
-            Data_Apps[(demo-laravel-app/database\ndemo-laravel-app/storage)]
+        subgraph Storage_Layer ["Storage Volumes: /opt/app-data/{app-or-service}/{component}"]
+            Data_NPM[("npm/data<br>npm/letsencrypt")]
+            Data_TS[("tailscale/state")]
+            Data_Apps[("demo-laravel-app/database<br>demo-laravel-app/storage")]
         end
     end
 
     %% Routing
     WebUsers -->|HTTPS :443| CF_DNS
-    CF_Edge == Outbound QUIC Tunnel ==> CFTunnel
+    CF_Edge -->|Outbound QUIC Tunnel| CFTunnel
     CFTunnel -->|HTTP / Forward Host| NPM
     NPM -->|Route pulse.yourdomain.com| App1
     NPM -->|Route api.yourdomain.com| App2
