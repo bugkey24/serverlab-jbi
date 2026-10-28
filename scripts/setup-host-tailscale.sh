@@ -2,6 +2,7 @@
 # ==============================================================================
 # Setup Tailscale on Host (TurnKey GNU/Linux 18 / Debian 12)
 # Enables Userspace Networking + Tailscale SSH directly on the host OS
+# Designed specifically for unprivileged LXC environments lacking /dev/net/tun
 # ==============================================================================
 set -euo pipefail
 
@@ -27,13 +28,18 @@ else
     echo "--> Tailscale package is already installed."
 fi
 
-# 3. Configure systemd daemon to run in userspace networking mode
-echo "[3/5] Configuring /etc/default/tailscaled for unprivileged LXC..."
-cat << 'EOF' > /etc/default/tailscaled
-# Configuration for tailscaled on unprivileged LXC
-# Netstack userspace networking (no /dev/net/tun needed)
-# SOCKS5 & HTTP proxies bound on localhost:1055 for local applications
-FLAGS="--tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055"
+# 3. Create systemd drop-in override for unprivileged LXC
+# Why: Debian's stock tailscaled.service executes 'tailscaled --cleanup' in ExecStartPre,
+# which looks for a kernel 'tailscale0' device and fails inside unprivileged containers.
+# The drop-in override clears ExecStartPre and launches tailscaled in userspace mode.
+echo "[3/5] Configuring systemd override for unprivileged LXC userspace mode..."
+mkdir -p /etc/systemd/system/tailscaled.service.d
+
+cat << 'EOF' > /etc/systemd/system/tailscaled.service.d/override.conf
+[Service]
+ExecStartPre=
+ExecStart=
+ExecStart=/usr/sbin/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock --port=41641 --tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055
 EOF
 
 # 4. Reload and restart systemd service

@@ -69,11 +69,18 @@ If you prefer configuring it manually:
    curl -fsSL https://tailscale.com/install.sh | sh
    ```
 
-2. **Configure `/etc/default/tailscaled`**:
-   Instruct the daemon to use userspace netstack and start proxies on loopback:
+2. **Configure Systemd Override for Unprivileged LXC**:
+   In unprivileged LXC containers without `/dev/net/tun`, Debian's stock `tailscaled.service` fails during startup because `ExecStartPre=/usr/sbin/tailscaled --cleanup` attempts to enumerate a non-existent `tailscale0` kernel interface.
+   
+   To bypass this, create a systemd drop-in override:
    ```bash
-   cat << 'EOF' > /etc/default/tailscaled
-   FLAGS="--tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055"
+   mkdir -p /etc/systemd/system/tailscaled.service.d
+
+   cat << 'EOF' > /etc/systemd/system/tailscaled.service.d/override.conf
+   [Service]
+   ExecStartPre=
+   ExecStart=
+   ExecStart=/usr/sbin/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock --port=41641 --tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055
    EOF
    ```
 
@@ -154,7 +161,11 @@ $response = Http::withOptions([
 
 ## 6. Troubleshooting & Gotchas
 
-#### 1. SSH lands in Alpine Linux (`Welcome to Alpine!`)
+#### 1. `router: enumerating tailscale0 addresses for cleanup failed`
+- **Cause**: In Debian 12 / TurnKey unprivileged LXC, the stock `tailscaled.service` runs `ExecStartPre=/usr/sbin/tailscaled --cleanup`, which looks for a kernel interface `tailscale0` and crashes when `/dev/net/tun` is missing.
+- **Fix**: Use the systemd drop-in override `/etc/systemd/system/tailscaled.service.d/override.conf` with an empty `ExecStartPre=` line and `--tun=userspace-networking` in `ExecStart`.
+
+#### 2. SSH lands in Alpine Linux (`Welcome to Alpine!`)
 - **Cause**: Tailscale was running in a Docker container with `--ssh`. Containerized Tailscale traps SSH inside its own isolated container filesystem.
 - **Fix**: Stop and remove the Docker Tailscale container (`docker rm -f infra-tailscale`) and run Tailscale directly on the host using `scripts/setup-host-tailscale.sh`.
 

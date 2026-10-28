@@ -29,6 +29,22 @@ docker network inspect infra_network
 
 ### 2.1 Tailscale Userspace (Host-Native Implementation)
 
+#### Symptom: `router: enumerating tailscale0 addresses for cleanup failed`
+- **Cause**: Stock `tailscaled.service` on Debian calls `ExecStartPre=/usr/sbin/tailscaled --cleanup`, which looks for the kernel interface `tailscale0`. In unprivileged LXC without `/dev/net/tun`, this causes `exit-code` failure during systemd startup.
+- **Resolution**:
+  1. Add systemd drop-in override:
+     ```bash
+     mkdir -p /etc/systemd/system/tailscaled.service.d
+     cat << 'EOF' > /etc/systemd/system/tailscaled.service.d/override.conf
+     [Service]
+     ExecStartPre=
+     ExecStart=
+     ExecStart=/usr/sbin/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock --port=41641 --tun=userspace-networking --socks5-server=127.0.0.1:1055 --outbound-http-proxy-listen=127.0.0.1:1055
+     EOF
+     systemctl daemon-reload
+     systemctl restart tailscaled
+     ```
+
 #### Symptom: SSH lands in Alpine Linux (`Welcome to Alpine!`) instead of TurnKey Host
 - **Cause**: Tailscale was running in a Docker container with `--ssh`. Containerized Tailscale traps SSH inside its own isolated container filesystem.
 - **Resolution**:

@@ -11,7 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - **Host-Level Tailscale Deployment Script (`scripts/setup-host-tailscale.sh`)**:
   - Provides automated configuration of Tailscale in userspace networking mode directly on the TurnKey Debian 12 LXC host.
-  - Configures `/etc/default/tailscaled` with `--tun=userspace-networking` and persistent SOCKS5/HTTP listeners on `127.0.0.1:1055`.
+  - Automatically installs systemd drop-in override (`/etc/systemd/system/tailscaled.service.d/override.conf`) clearing `ExecStartPre` to prevent `router: enumerating tailscale0 addresses for cleanup failed` crashes on unprivileged containers lacking `/dev/net/tun`.
+  - Configures userspace netstack and persistent SOCKS5/HTTP listeners on `127.0.0.1:1055`.
   - Enables direct, passwordless remote SSH administration into the actual host (`root@jbi24061 ~#`) via Tailscale SSH rather than trapping sessions inside isolated container namespaces.
 - **Official GitHub Repository Linkage**:
   - Connected project remote to [`https://github.com/bugkey24/serverlab-jbi.git`](https://github.com/bugkey24/serverlab-jbi.git).
