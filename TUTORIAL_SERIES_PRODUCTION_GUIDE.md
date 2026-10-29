@@ -41,6 +41,13 @@ Demonstrate how a beginner student or developer with **zero command-line / SSH a
    - Set permissions: Ensure `storage/` and `bootstrap/cache` are owned by `www-data`.
 5. **Verify**:
    - Visit `https://tajbi.poliwangi.ac.id/jbi24061/`. Show the live dashboard running under subpath mode!
+6. **System Adjustments & Transition to Episode 2**:
+   - Run the post-Tutorial 1 adjustment script to verify environment integrity and prepare the host for subsequent Docker & Tailscale episodes:
+     ```bash
+     chmod +x /opt/infra/scripts/post-tutorial1-setup.sh
+     /opt/infra/scripts/post-tutorial1-setup.sh
+     ```
+   - This script validates permissions, ensures Docker & dependencies are ready, creates `/opt/app-data/` storage hierarchies, creates `infra_network`, and scaffolds `.env` files for NPM, Cloudflare, and Demo App.
 
 ---
 

@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Post-Tutorial 1 System Configuration & Transition Script (`scripts/post-tutorial1-setup.sh`)**:
+  - Automatically bridges the gap between Tutorial 1 (Webmin Track 1) and upcoming episodes (Tailscale, Cloudflare Tunnel, NPM, and Track 2 Docker stack).
+  - Validates and enforces `www-data:775` permissions on `/var/www/laravel` storage and bootstrap directories.
+  - Automatically provisions Docker Engine, Compose plugins, and base tools (`curl`, `git`, `iptables`, `ca-certificates`).
+  - Prepares the standardized `/opt/app-data/{service}/{component}` persistent volume hierarchies.
+  - Creates the shared bridge network `infra_network`.
+  - Scaffolds `.env` configuration files from templates for Cloudflare Tunnel, NPM, and the demo application.
+  - Offers an interactive prompt to cleanly stop/disable host Apache2 when ready to free port 80 for Nginx Proxy Manager.
 - **Tutorial Series Production Guide (`TUTORIAL_SERIES_PRODUCTION_GUIDE.md`)**:
   - Detailed 4-episode video tutorial blueprint covering:
     - Episode 1: Production Webmin Dashboard Deployment & Zero-CLI LAMP setup.
