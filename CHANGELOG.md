@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Tutorial Series Production Guide (`TUTORIAL_SERIES_PRODUCTION_GUIDE.md`)**:
+  - Detailed 4-episode video tutorial blueprint covering:
+    - Episode 1: Production Webmin Dashboard Deployment & Zero-CLI LAMP setup.
+    - Episode 2: Native Tailscale in Unprivileged LXC with Userspace Netstack & Tailscale SSH.
+    - Episode 3: Cloudflare Tunnel & Nginx Proxy Manager Ingress with Top-to-Bottom Route Order precedence.
+    - Episode 4: Track 2 Containerized Laravel VPS Stack with Zero-Error Asset Serving & Self-Healing Entrypoint.
+  - Complete with recording workflows, on-screen checklists, terminal commands, and common pitfalls to avoid.
+- **Automated Server Clean-Slate Reset Utility (`scripts/reset-clean-slate.sh`)**:
+  - One-click teardown script to restore TurnKey Linux 18 (Debian 12) LXC hosts back to fresh baseline state before recording.
+  - Automatically shuts down all running Docker Compose stacks (demo app, NPM, Cloudflare Tunnel), prunes container networks/volumes, wipes `/opt/app-data/`, purges host Tailscale and its systemd drop-in override, and restores native host Apache2 and MariaDB services.
+- **Dedicated Nginx Web Image for Track 2 (`examples/demo-laravel-app/docker/Dockerfile.web`)**:
+  - Resolves Nginx 404 `realpath() "/var/www/html/public" failed` errors by bundling pre-built public static assets and FastCGI configuration directly into the container image.
 - **Production Environment Hardening & Trusted Reverse Proxy Handling**:
   - Configured `$middleware->trustProxies(at: '*')` in [`src/bootstrap/app.php`](examples/demo-laravel-app/src/bootstrap/app.php) to ensure accurate HTTPS scheme evaluation, client IP resolution (preventing 172.18.0.x spoofing), and prevention of infinite redirect loops behind Cloudflare Tunnel and NPM.
   - Formatted and grouped production environment variables in [`examples/demo-laravel-app/.env.example`](examples/demo-laravel-app/.env.example) and [`compose.yaml`](examples/demo-laravel-app/compose.yaml), guaranteeing strict production isolation (`APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=error`, `SESSION_DRIVER=cookie`).
