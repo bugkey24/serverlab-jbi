@@ -66,16 +66,20 @@ networks:
     external: true
 ```
 
-### 3.2 Ingress Rules in Cloudflare Zero Trust
-In the Cloudflare Zero Trust Dashboard (`Access` -> `Tunnels` -> your tunnel -> `Configure` -> `Public Hostname`):
+### 3.2 Ingress Rules (Cloudflare Dashboard Modern Routes UI)
+In the modern Cloudflare Dashboard (`Networks` -> `Tunnels` -> your tunnel -> `Routes` tab):
 
-| Public Hostname | Service Type | URL |
-| :--- | :--- | :--- |
-| `*.yourdomain.com` | `HTTP` | `npm:80` |
-| `yourdomain.com` | `HTTP` | `npm:80` |
+| Order | Destination (Hostname) | Type | Service URL | Purpose |
+| :---: | :--- | :--- | :--- | :--- |
+| **1** | `npm.yourdomain.com` | Published application | `http://npm:81` | Direct access to NPM Admin Dashboard (port 81) |
+| **2** | `yourdomain.com` | Published application | `http://npm:80` | Apex/Root domain forwarded to NPM (port 80) |
+| **3** | `*.yourdomain.com` | Published application | `http://npm:80` | Wildcard catching all other subdomains into NPM (port 80) |
 
-> [!NOTE]
-> `npm` is the service name defined in `services/npm/compose.yaml`. Docker's internal DNS automatically resolves `npm` to the NPM container's internal IP address across the shared `infra_network`.
+> [!IMPORTANT]
+> **Order of Routes Matters!** Cloudflare matches routes from **top to bottom** and stops at the first match:
+> - Specific routes like `npm.yourdomain.com` **must be listed before** `*.yourdomain.com`.
+> - If `*.yourdomain.com` is placed above `npm.yourdomain.com`, visiting `npm.yourdomain.com` will be sent to port 80 (NPM Default Page) instead of the admin panel on port 81!
+> - The Service URL must use **`http://`** (not `https://`), and target container names directly (`http://npm:80` or `http://npm:81`), **not** `localhost` (which inside Docker refers to the `cloudflared` container itself).
 
 ---
 
@@ -100,14 +104,22 @@ Add:
 CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoiYmNkZWY...your_copied_token
 ```
 
-### Step 3: Configure Ingress Route
-In the **Public Hostnames** tab of the Tunnel configuration:
-- Subdomain: `*` (or specific subdomain)
-- Domain: `yourdomain.com`
-- Path: Leave blank
-- Service:
-  - Type: `HTTP`
-  - URL: `npm:80`
+### Step 3: Configure Ingress Routes in Cloudflare Dashboard
+In the **Routes** tab of the Tunnel configuration, click **+ Add route** -> **Published application**:
+1. **Route 1 (NPM Admin Panel)**:
+   - Subdomain: `npm`
+   - Domain: `yourdomain.com`
+   - Service URL: `http://npm:81`
+2. **Route 2 (Root Domain)**:
+   - Subdomain: *(leave empty)*
+   - Domain: `yourdomain.com`
+   - Service URL: `http://npm:80`
+3. **Route 3 (Wildcard Catch-All)**:
+   - Subdomain: `*`
+   - Domain: `yourdomain.com`
+   - Service URL: `http://npm:80`
+
+*(Ensure Route 1 is ordered above Route 3 so Cloudflare matches the specific `npm` admin subdomain first).*
 
 ### Step 4: Start the Service
 ```bash

@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Automated Docker Application Lifecycle & Self-Healing Entrypoint**:
+  - Upgraded [`examples/demo-laravel-app/docker/Dockerfile`](examples/demo-laravel-app/docker/Dockerfile) to a multi-stage build that automatically bundles pre-compiled production Composer dependencies into the image.
+  - Implemented [`docker/entrypoint.sh`](examples/demo-laravel-app/docker/entrypoint.sh) to automate runtime self-healing:
+    - Auto-detects and provisions `vendor/` packages even when mounting code volumes without host dependencies.
+    - Automatically generates cryptographically secure 256-bit `APP_KEY` if none is supplied in `.env`.
+    - Automatically initializes directory structure and runtime permissions for `storage/` and `bootstrap/cache`.
+  - Replaced raw directory mount with `volumes_from: app:ro` in [`compose.yaml`](examples/demo-laravel-app/compose.yaml) so Nginx and PHP-FPM share consistent, pre-built application assets.
 - **Host-Level Tailscale Deployment Script (`scripts/setup-host-tailscale.sh`)**:
   - Provides automated configuration of Tailscale in userspace networking mode directly on the TurnKey Debian 12 LXC host.
   - Automatically installs systemd drop-in override (`/etc/systemd/system/tailscaled.service.d/override.conf`) clearing `ExecStartPre` to prevent `router: enumerating tailscale0 addresses for cleanup failed` crashes on unprivileged containers lacking `/dev/net/tun`.
@@ -26,6 +33,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Documented cryptographically secure manual key generation workflows (via PowerShell RNG and OpenSSL) in `TRACK1_MANUAL_WEBMIN_GUIDE.md`.
 
 ### Changed
+- **Modern Cloudflare Dashboard Routes UI Documentation**:
+  - Updated [`docs/CLOUDFLARE_TUNNEL.md`](docs/CLOUDFLARE_TUNNEL.md) and [`docs/NGINX_PROXY_MANAGER.md`](docs/NGINX_PROXY_MANAGER.md) to detail Cloudflare's new Routes UI (`Published application`).
+  - Added explicit instructions on route ordering (placing specific routes like `npm.yourdomain.com` -> `http://npm:81` at Order 1, above wildcard catch-all `*.yourdomain.com` -> `http://npm:80`) to prevent route hijacking.
 - **Architectural Shift: Full Transition to Native Host Tailscale**:
   - Deprecated and removed the containerized Tailscale stack (`services/tailscale/`) to prevent SSH namespace entrapment (landing in Alpine Linux container shells instead of host TurnKey Debian).
   - Adopted native host `tailscaled` service managed by Debian systemd as the single source of truth for administrative SSH access and application proxying (`127.0.0.1:1055`).

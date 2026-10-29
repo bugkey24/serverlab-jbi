@@ -65,6 +65,9 @@ Configure:
 APP_DATA_DIR=/opt/app-data
 DEMO_APP_DOMAIN=pulse.yourdomain.com
 
+# Optional: Custom APP_KEY (if empty, entrypoint.sh auto-generates a secure key)
+APP_KEY=
+
 DB_DATABASE=db_serverlab
 DB_USERNAME=pulse_user
 DB_PASSWORD=pulse_secret_pass
@@ -79,7 +82,14 @@ docker compose up -d --build
 docker compose ps
 ```
 
-The database initializes automatically by loading `database/schema.sql` on first boot.
+> [!TIP]
+> **Fully Automated Startup Workflow**:
+> The multi-stage Docker build automatically installs and optimizes all Composer dependencies into the image. On container startup, the automated entrypoint script (`entrypoint.sh`):
+> 1. Verifies that `vendor/autoload.php` is in place.
+> 2. Auto-generates a 256-bit cryptographic `APP_KEY` if none was set in `.env`.
+> 3. Configures directory permissions (`775` on `storage/` and `bootstrap/cache`).
+> 4. Auto-seeds the database schema via `schema.sql` on MariaDB's initial launch.
+> No manual `composer install` or key generation commands are needed!
 
 ### Step 5: Route Through Nginx Proxy Manager (NPM)
 1. Open the NPM Admin Dashboard (`http://localhost:81` via Tailscale or SSH tunnel `ssh -L 8181:localhost:81 user@host`).

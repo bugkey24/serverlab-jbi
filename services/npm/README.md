@@ -39,9 +39,14 @@ docker compose up -d
 ```
 
 ### 4. Access Administration Dashboard
-Because port 81 is bound to `127.0.0.1:81` for security, access it via:
-- **SSH Port Forwarding**: `ssh -L 8181:localhost:81 user@host-ip` -> open `http://localhost:8181`
-- **Tailscale**: Connect via Tailscale SOCKS5 proxy or Tailscale browser configuration.
+NPM Admin Dashboard (port 81) can be accessed via:
+- **Cloudflare Published Application**: Route `npm.yourdomain.com` in Cloudflare Tunnel directly to `http://npm:81` (protected with Cloudflare Access Zero Trust policy).
+- **SSH Port Forwarding over Tailscale**:
+  ```bash
+  ssh -L 8181:127.0.0.1:81 root@campus-lxc-node
+  ```
+  Then browse to `http://localhost:8181`.
+- **Tailscale SOCKS5 Proxy**: Set browser proxy to `127.0.0.1:1055` and browse directly to `http://127.0.0.1:81`.
 
 ### 5. Default Login
 - **Email**: `admin@example.com`

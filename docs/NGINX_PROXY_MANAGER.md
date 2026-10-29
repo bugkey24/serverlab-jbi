@@ -75,7 +75,17 @@ docker compose logs -f
 ```
 
 ### Step 4: Access Admin Dashboard
-- **URL**: `http://localhost:81` (via local browser with Tailscale SOCKS5 or SSH port forwarding `ssh -L 8181:localhost:81 user@host`).
+The Admin Dashboard can be reached via:
+1. **Cloudflare Tunnel Dedicated Route** (e.g. `npm.yourdomain.com` -> `http://npm:81`).
+   *(Ensure in Cloudflare Tunnel Routes that `npm.yourdomain.com` is placed at Order 1, above the wildcard `*.yourdomain.com`, so Cloudflare does not send admin requests to port 80!)*
+2. **SSH Tunnel over Tailscale**:
+   ```bash
+   ssh -L 8181:127.0.0.1:81 root@campus-lxc-node
+   ```
+   Then open `http://localhost:8181`.
+3. **Tailscale SOCKS5**:
+   Point your browser to SOCKS5 proxy `127.0.0.1:1055` and browse to `http://127.0.0.1:81`.
+
 - **Default Credentials**:
   - Email: `admin@example.com`
   - Password: `changeme`
