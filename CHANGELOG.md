@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Production Environment Hardening & Trusted Reverse Proxy Handling**:
+  - Configured `$middleware->trustProxies(at: '*')` in [`src/bootstrap/app.php`](examples/demo-laravel-app/src/bootstrap/app.php) to ensure accurate HTTPS scheme evaluation, client IP resolution (preventing 172.18.0.x spoofing), and prevention of infinite redirect loops behind Cloudflare Tunnel and NPM.
+  - Formatted and grouped production environment variables in [`examples/demo-laravel-app/.env.example`](examples/demo-laravel-app/.env.example) and [`compose.yaml`](examples/demo-laravel-app/compose.yaml), guaranteeing strict production isolation (`APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=error`, `SESSION_DRIVER=cookie`).
 - **Automated Docker Application Lifecycle & Self-Healing Entrypoint**:
   - Upgraded [`examples/demo-laravel-app/docker/Dockerfile`](examples/demo-laravel-app/docker/Dockerfile) to a multi-stage build that automatically bundles pre-compiled production Composer dependencies into the image.
   - Implemented [`docker/entrypoint.sh`](examples/demo-laravel-app/docker/entrypoint.sh) to automate runtime self-healing:

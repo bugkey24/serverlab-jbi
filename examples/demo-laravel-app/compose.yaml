@@ -20,8 +20,10 @@ services:
       - DB_DATABASE=${DB_DATABASE:-db_serverlab}
       - DB_USERNAME=${DB_USERNAME:-pulse_user}
       - DB_PASSWORD=${DB_PASSWORD:-pulse_secret_pass}
-      - SESSION_DRIVER=cookie
-      - CACHE_STORE=file
+      - SESSION_DRIVER=${SESSION_DRIVER:-cookie}
+      - CACHE_STORE=${CACHE_STORE:-file}
+      - LOG_CHANNEL=${LOG_CHANNEL:-stack}
+      - LOG_LEVEL=${LOG_LEVEL:-error}
     volumes:
       - ${APP_DATA_DIR:-/opt/app-data}/demo-laravel-app/storage:/var/www/html/storage
     networks:
