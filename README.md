@@ -16,7 +16,7 @@
   A production-ready blueprint for deploying multi-tenant applications in restricted, unprivileged LXC containers and institutional campus networks without public IPv4 addresses, TUN devices, or firewall ingress privileges.
 </p>
 
-[Architecture](docs/ARCHITECTURE.md) • [Demo App](examples/demo-laravel-app/README.md) • [Track 1 (Webmin)](examples/demo-laravel-app/TRACK1_MANUAL_WEBMIN_GUIDE.md) • [Track 2 (Docker VPS)](examples/demo-laravel-app/TRACK2_DOCKER_VPS_GUIDE.md) • [Troubleshooting](docs/TROUBLESHOOTING.md)
+[Architecture](docs/ARCHITECTURE.md) • [Demo App](examples/demo-laravel-app/README.md) • [Track 1 (Webmin)](examples/demo-laravel-app/TRACK1_MANUAL_WEBMIN_GUIDE.md) • [Track 2 (Docker VPS)](examples/demo-laravel-app/TRACK2_DOCKER_VPS_GUIDE.md) • [Automation Scripts](docs/AUTOMATION_SCRIPTS.md) • [Tutorial Series Guide](TUTORIAL_SERIES_PRODUCTION_GUIDE.md) • [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 </div>
 

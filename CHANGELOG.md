@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Tutorial 1 Fast Reset & Preparation Script (`scripts/prepare-tutorial1-state.sh`)**:
+  - Provides a rapid, non-destructive reset tool to run before recording Episode 1 or in between failed takes.
+  - Clears `/var/www/laravel` and restores the clean TurnKey LAMP welcome page on `https://tajbi.poliwangi.ac.id/jbi24061/`.
+  - Drops the `db_serverlab` database in MariaDB so Adminer import steps can be cleanly re-recorded.
+  - Stops any conflicting Docker containers and ensures native Apache2 and MariaDB are healthy on ports 80 and 3306.
+  - Supports non-interactive `-y` / `--yes` flag for automated rapid resetting.
 - **Post-Tutorial 1 System Configuration & Transition Script (`scripts/post-tutorial1-setup.sh`)**:
   - Automatically bridges the gap between Tutorial 1 (Webmin Track 1) and upcoming episodes (Tailscale, Cloudflare Tunnel, NPM, and Track 2 Docker stack).
   - Validates and enforces `www-data:775` permissions on `/var/www/laravel` storage and bootstrap directories.

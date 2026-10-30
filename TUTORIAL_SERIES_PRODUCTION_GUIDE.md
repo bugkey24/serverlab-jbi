@@ -21,6 +21,14 @@
 ### Episode Objective
 Demonstrate how a beginner student or developer with **zero command-line / SSH access** can deploy a complete Laravel application using only Webmin Filemin and Adminer GUI.
 
+### Pre-Recording Setup & Retake Reset
+If you are doing a practice run or need to reset between takes, run:
+```bash
+chmod +x /opt/infra/scripts/prepare-tutorial1-state.sh
+/opt/infra/scripts/prepare-tutorial1-state.sh -y
+```
+*This instantly clears `/var/www/laravel`, drops `db_serverlab`, stops conflicting containers, and restores the pristine default TurnKey page.*
+
 ### Step-by-Step Script / Recording Workflow:
 1. **Show Initial State**:
    - Open browser to `https://tajbi.poliwangi.ac.id/jbi24061/` (shows default TurnKey page).
